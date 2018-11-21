@@ -71,7 +71,7 @@ class ProcessImages():
 		'''Load the data. Optionally, specify the frame range to load'''
 
 		# PyKITTI object for 
-		self.image_dataset = pykitti.odometry(self.raw_path, self.sequence_id, frames=range(0, 20, 5))
+		self.image_dataset = pykitti.odometry(self.raw_path, self.sequence_id, frames=range(0, 20, 2))
 		print ("Length of dataset: %s" %str(len(self.image_dataset)))
 
 		# self.image_dataset.calib:      Calibration data are accessible as a named tuple
@@ -132,7 +132,7 @@ class ProcessImages():
 	def execute(self):
 		self.completeImagesPath(0)
 		self.loadImageDataset()
-		# self.visualizeDataset()
+		self.visualizeDataset()
 
 if __name__ == '__main__':
 	camera_side = "left"
