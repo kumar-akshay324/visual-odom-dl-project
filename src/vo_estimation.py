@@ -24,20 +24,20 @@ from keras.utils import np_utils
 from keras.optimizers import *
 import pandas as pd
 
-from keras import backend as K
-K.set_image_dim_ordering('th')
-
-
-
 class RCNN:
 
-	def __init__(self, data, time_step, image_sequences):
+	def __init__(self, data, cnn_model_params ,rnn_model_params, data_params, ):
 		'''
 		Input: image_sequences = [training sequences list, test sequences list] 
 		'''
-		self.time_step = time_step
-		self.image_sequences = image_sequences
+		self.batch_size = cnn_model_params[0]
+		self.time_step = rnn_model_params[0]
+		self.image_sequences = data_params[0]
+		self.img_r = data_params[1]
+		self.image_verbostiy = data_params[-1]
 		self.last_image_pointer = {train: 0, test: 0}
+
+	# ------------- Data Processing -------------------- #
 
 	def initImagePaths(self):
 		current_dir =os.getcwd()
@@ -70,7 +70,7 @@ class RCNN:
         img = img/np.max(img)
         img = img - np.mean(img)
         height, width = img.shape[:2]
-        img = cv2.resize(img, (width/1.5, height/1.5), fx=0, fy=0)	            
+        img = cv2.resize(img, (width/self.img_r, height/self.img_r), fx=0, fy=0)	            
 
 	def getBatchImages(self, train=1, batch_size=5):
 		# If the batch is to be extracted from train OR test images list
@@ -96,6 +96,8 @@ class RCNN:
 		cv2.imshow()
 		cv2.waitkey()
 
+	# ------------- Deep Learning Model -------------------- #
+
 	def createOptimizer(self, opt):
 
 		lr = 0.1
@@ -108,24 +110,35 @@ class RCNN:
 
 		return designed_optimizer
 
-	def defineCnnModel(self, size_axis_1, size_axis_2, size_axis_color):
+	def defineCnnModel(self):
 
 		# CNN Model 
 		cnn_model = Sequential()
 
-		cnn_model.add(Conv2D(64, (3,3), activation="relu", input_shape=(1, 28, 28), padding="valid"))
-		cnn_model.add(MaxPooling2D(pool_size=(2,2)))
-		cnn_model.add(Conv2D(128, (3,3), activation="sigmoid", padding="valid"))
-		cnn_model.add(MaxPooling2D(pool_size=(2,2)))
-		cnn_model.add(Conv2D(256, (3,3), activation="relu", padding="valid"))
-		cnn_model.add(MaxPooling2D(pool_size=(2,2)))
-		cnn_model.add(Conv2D(512, (3,3), activation="sigmoid", padding="valid"))
-		cnn_model.add(MaxPooling2D(pool_size=(2,2)))
-		cnn_model.add(Conv2D(256, (3,3), activation="relu", padding="valid"))
-		cnn_model.add(MaxPooling2D(pool_size=(2,2)))
-		cnn_model.add(Conv2D(128, (3,3), activation="sigmoid", padding="valid"))
+		# Trapezoidal Shaped Convolutional Neural Network
+		cnn_model.add(TimeDistributed(Conv2D(64, (3,3), activation="relu", input_shape=(self.width, self.height, 2), padding="valid", strides=(2,2))))
+		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
 
-		# 
+		cnn_model.add(TimeDistributed(Conv2D(128, (3,3), activation="sigmoid", padding="valid", strides=(2,2))))
+		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
+
+		cnn_model.add(TimeDistributed(Conv2D(256, (3,3), activation="relu", padding="valid", strides=(1,1))))
+		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
+
+		cnn_model.add(TimeDistributed(Conv2D(512, (3,3), activation="sigmoid", padding="valid", strides=(2,2))))
+		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
+
+		cnn_model.add(TimeDistributed(Conv2D(256, (3,3), activation="relu", padding="valid", strides=(1,1))))
+		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
+
+		cnn_model.add(TimeDistributed(Conv2D(128, (3,3), activation="sigmoid", padding="valid")))
+
+		cnn_model.add(TimeDistributed(Flatten()))
+
+		print ("CNN Model")
 		print (cnn_model.summary())
-		return cnn_model		
+		return cnn_model
 
+	def defineLSTM(self):
+		# TODO @Samruddhi
+		
