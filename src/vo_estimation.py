@@ -26,23 +26,27 @@ import pandas as pd
 
 class RCNN:
 
-	def __init__(self, data, cnn_model_params ,rnn_model_params, data_params, ):
+	def __init__(self, data, cnn_model_params ,rnn_model_params, data_params):
 		'''
-		Input: image_sequences = [training sequences list, test sequences list] 
+		Input: 	data_params 		= 	[path_to_dataset, image_sequences, image_ratio,, image_verbosity]
+										image_sequences = [training sequences list, test sequences list]
+				rnn_model_params	= 	[time_step,	LSTM_nodes, .....]
+				cnn_model_params	= 	[batch_size, ]
 		'''
-		self.batch_size = cnn_model_params[0]
-		self.time_step = rnn_model_params[0]
-		self.image_sequences = data_params[0]
-		self.img_r = data_params[1]
-		self.image_verbostiy = data_params[-1]
+		self.batch_size 		= cnn_model_params[0]
+		self.time_step 			= rnn_model_params[0]
+		self.path_to_dataset 	= data_params[0] 
+		self.image_sequences 	= data_params[1]
+		self.img_r 				= data_params[2]
+		self.image_verbostiy 	= data_params[-1]
 		self.last_image_pointer = {train: 0, test: 0}
 
 	# ------------- Data Processing -------------------- #
 
 	def initImagePaths(self):
 		current_dir =os.getcwd()
-		self.train_paths = [current_dir + "/" + self.path_to_images + "/sequences/" + index for index in self.image_sequences[0]]
-		self.test_paths  = [current_dir + "/" + self.path_to_images + "/sequences/" + index for index in self.image_sequences[1]]
+		self.train_paths = [current_dir + "/" + self.path_to_dataset + "/sequences/" + str(index) for index in self.image_sequences[0]]
+		self.test_paths  = [current_dir + "/" + self.path_to_dataset + "/sequences/" + str(index) for index in self.image_sequences[1]]
 
 	def initDataset(self):
 		loadTrainImages()
@@ -72,22 +76,22 @@ class RCNN:
         height, width = img.shape[:2]
         img = cv2.resize(img, (width/self.img_r, height/self.img_r), fx=0, fy=0)	            
 
-	def getBatchImages(self, train=1, batch_size=5):
+	def getBatchImages(self, train=1):
 		# If the batch is to be extracted from train OR test images list
 		image_list = self.train_images_list if train else self.test_images_list
 		stacked_image_batch = []
 
 		# Extracting images of batch_size length using the last pointer in the list
-		for index in range(self.last_image_pointer, batch_size + self.last_image_pointer):
+		for index in range(self.last_image_pointer, self.batch_size + self.last_image_pointer, self.time_step):
 			if ((index+1) < len(image_list)):
 				stacked_image = np.concatenate([image_list[index], image_list[index+1]], -1)
 				stacked_image_batch.append(stacked_image)
 
 		# Store the last batch pointer
 		if train:
-			self.last_image_pointer[train] = self.last_image_pointer[train] + batch_size 
+			self.last_image_pointer[train] = self.last_image_pointer[train] + self.batch_size 
 		else:
-			self.last_image_pointer[test] = self.last_image_pointer[test] + batch_size
+			self.last_image_pointer[test] = self.last_image_pointer[test] + self.batch_size
 
 		return stacked_image_batch
 
@@ -141,4 +145,4 @@ class RCNN:
 
 	def defineLSTM(self):
 		# TODO @Samruddhi
-		
+
