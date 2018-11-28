@@ -86,7 +86,7 @@ class Odometry:
 		'''
 		stacked_poses_batch = {"position": [], "orientation": [] }
 		# Extracting poses of batch_size length using the last pointer in the list
-		for index in range(pointer, self.batch_size + pointer, self.time_step):
+		for index in range(pointer, (self.batch_size * self.time_step) + pointer, self.time_step):
 			if ((index+1) < len(self.translation_vectors)):
 				stacked_poses_batch["position"].append(self.translationVectorList(index))
 				stacked_poses_batch["orientation"].append(self.eulerVectorList(index))
@@ -104,7 +104,7 @@ class Odometry:
 
 if __name__ == '__main__':
 	cnn_model_params = [5]
-	rnn_model_params = [1]
+	rnn_model_params = [3]
 	path_to_poses = "../dataset_images"
 	image_sequences = ["00", "01"]
 	pose_verbostiy = 1
