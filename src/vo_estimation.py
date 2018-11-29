@@ -103,8 +103,8 @@ class RCNN:
 	# ------------- Deep Learning Model -------------------- #
 
 	def createOptimizer(self, opt):
-
-		lr = 0.1
+		'''Create an optimizer from the available ones in Keras'''
+		lr = 0.001
 		dcy = lr/self.num_epochs
 		if opt=="adam":
 			designed_optimizer = Adam(lr=0.1, beta_1=0.9, beta_2=0.999, decay=dcy)
@@ -115,7 +115,7 @@ class RCNN:
 		return designed_optimizer
 
 	def defineCnnModel(self):
-
+		'''Basic Convolutional Neural Network for processing stacked images'''
 		# CNN Model 
 		cnn_model = Sequential()
 
@@ -129,9 +129,6 @@ class RCNN:
 		cnn_model.add(TimeDistributed(Conv2D(256, (3,3), activation="relu", padding="valid", strides=(1,1))))
 		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
 
-		cnn_model.add(TimeDistributed(Conv2D(512, (3,3), activation="sigmoid", padding="valid", strides=(2,2))))
-		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
-
 		cnn_model.add(TimeDistributed(Conv2D(256, (3,3), activation="relu", padding="valid", strides=(1,1))))
 		cnn_model.add(TimeDistributed(MaxPooling2D(pool_size=(2,2))))
 
@@ -140,9 +137,43 @@ class RCNN:
 		cnn_model.add(TimeDistributed(Flatten()))
 
 		print ("CNN Model")
-		print (cnn_model.summary())
-		return cnn_model
+		print (cnn_model.summary())		
+		self.cnn_model = cnn_model
 
 	def defineLSTM(self):
-		# TODO @Samruddhi
+		'''Additional LSTM network after CNN layer'''
+		
+ 		lstm_model = Sequential()
+		lstm_model.add(LSTM(32, input_shape=(5,6), activation='tanh', recurrent_activation='hard_sigmoid',
+							implementation=1, return_sequences=False, return_state=False, stateful=True, unroll=False))
+		lstm_model.add(LSTM(8))
+		self.lstm_model = lstm_model
 
+	def defineFinalModel(self):
+
+		self.rcnn_model = self.cnn_model.add(self.lstm_model)
+		self.rcnn_model.add(Dense(6, kernel_initializer=’normal’,activation=’linear’))
+
+	def compileModel(self):
+		self.rcnn_model.compile(loss=’mse’,optimizer =self.createOptimizer("adam"),metrics=[‘accuracy’])
+
+	def trainModel(self):
+		self.rcnn_model.fit(X,y,epochs=1,batch_size=self.batch_size,validation_split=0.05,verbose=1);
+
+	def obtainResult(self):
+		scores = model.evaluate(X,y,verbose=1,batch_size=5)
+		print(‘Accurracy: {}’.format(scores[1])) 
+
+	def execute(self):
+		self.initImagePaths()
+		self.initDataset()
+
+
+if __name__ == '__main__':
+	cnn_model_params = [5]
+	rnn_model_params = [3]
+	path_to_poses = "../dataset_images"	
+	image_sequences = ["00", "01"]
+	pose_verbostiy = 1
+	data_params = [path_to_poses, image_sequences, pose_verbostiy]
+	RCNN(cnn_model_params, rnn_model_params, data_params)
