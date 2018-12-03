@@ -45,4 +45,5 @@ Implementation of Visual SLAM concepts for course Deep Learning for Robot Percep
 
 The complete implementation is to be run using the _make_ filesystem with commands inside the _Makefile_
 
-*
+* **odometry.py** 			- Extract the poses for corresponding stacked images as a stacked batch
+* **vo_estimation.py**  	- Process the stacked images and run the DL model on it

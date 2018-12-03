@@ -1,5 +1,5 @@
 run:
-	@python src/process_images.py $(CAMERA)
+	@python src/vo_estimation.py $(CAMERA)
 
 install-dependencies:
 	sudo -H pip3 install transforms3d

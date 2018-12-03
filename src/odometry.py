@@ -7,7 +7,7 @@ class Odometry:
 	def __init__(self, cnn_model_params, rnn_model_params, data_params):
 		'''
 		Input: 	data_params 		= 	[path_to_poses, image_sequences, pose_verbosity]
-										image_sequences = training sequences list
+										image_sequences = [training sequences list]
 				cnn_model_params	= 	[batch_size]
 		'''
 		self.batch_size = cnn_model_params[0]
@@ -63,15 +63,11 @@ class Odometry:
 
 				except FileNotFoundError:
 					print ("File Not Found %s" %(pose_file))
-
-					# finally:
-					# 	if not len(self.translation_vectors) == len(self.euler_angle_vectors):
-					# 		print ("Unequal lengths of translation and euler vector lists")
-					# 	else:
-					# 		print ("Successfully read ground truth poses")
-
-		# except:
-		# 	print ("Error in parsing pose files")
+				finally:
+					if not len(self.translation_vectors) == len(self.euler_angle_vectors):
+						print ("Unequal lengths of translation and euler vector lists")
+					else:
+						print ("Successfully read ground truth poses")
 
 	def translationVectorList(self, pointer):
 		return [self.translation_vectors[pointer], self.translation_vectors[pointer+1]]
@@ -80,9 +76,13 @@ class Odometry:
 		return [self.euler_angle_vectors[pointer], self.euler_angle_vectors[pointer+1]]
 
 	def getBatchPoses(self, pointer):
-		'''	stacked_poses = {"position": [], "orientation": [] }
-			position: [image_0 position list, image_1 position list ]
-			orientation: [image_0 euler list, image_1 euler list ]
+		'''	Input:
+				pointer 		= Pointer to the line in the images/poses list to start extracting the poses
+			Output:
+				stacked_poses_batch 	= {"position": [], "orientation": [] }
+											position: [[image_0 position list], [image_1 position list]]
+											orientation: [[image_0 euler list], [image_1 euler list]]
+				image_0 refers to first image and image_1 refers to second image
 		'''
 		stacked_poses_batch = {"position": [], "orientation": [] }
 		# Extracting poses of batch_size length using the last pointer in the list
@@ -92,22 +92,23 @@ class Odometry:
 				stacked_poses_batch["orientation"].append(self.eulerVectorList(index))
 			else:
 				print ("Index: %d and Translation & Euler Vector lengths: %d & %d" %(index, len(translation_vectors), len(translation_vectors)))
-
 				print ("End of dataset")
 		if self.pose_verbostiy:
 			print ("Final Batch of Poses: %s" %str(stacked_poses_batch))
 		return stacked_poses_batch
 
-	def execute(self):
-		self.getBatchPoses(0)
-
+	def execute(self, pointer):
+		'''	Input:
+				pointer 		= Pointer to the line in the images/poses list to start extracting the poses
+		'''
+		self.getBatchPoses(4539)
 
 if __name__ == '__main__':
 	cnn_model_params = [5]
-	rnn_model_params = [3]
+	rnn_model_params = [10]
 	path_to_poses = "../dataset_images"
 	image_sequences = ["00", "01"]
-	pose_verbostiy = 1
+	pose_verbostiy = 0
 	data_params = [path_to_poses, image_sequences, pose_verbostiy]
 	odom_object = Odometry(cnn_model_params, rnn_model_params, data_params)
-	odom_object.execute()
+	odom_object.execute(4539)
