@@ -46,6 +46,7 @@ class RCNN:
 	# ------------- Data Processing -------------------- #
 
 	def initImagePaths(self):
+		'''Look into the training and testing image paths and confirm their existence'''
 		current_dir =os.getcwd()
 		partial_path = current_dir + "/" + self.path_to_dataset + "/sequences/"
 		self.train_paths = [ partial_path + str(index) + "/image_0" for index in self.image_sequences[0]]
@@ -63,6 +64,7 @@ class RCNN:
 			print ("Got image paths correctly")
 
 	def initDataset(self):
+		'''Estimate the training and testing image contents'''
 		self.initTrainImages()
 		self.initTestImages()
 
@@ -83,7 +85,7 @@ class RCNN:
 			print ("Number of images in the test paths %s" %str(self.test_path_image_lengths)) 
 		
 	def getTrainImage(self, image_pointer):
-		# Load all the train images from all the sequences into one list
+		'''Return the training image for the corresponding pointer'''
 		success_flag = 0
 		img = np.zeros((10,10,3), np.uint8)
 		for path_index, paths in enumerate(self.train_paths):
@@ -94,12 +96,7 @@ class RCNN:
 				if (image_pointer == image_index_overall):
 					img = self.processRawImage(paths + "/" + image_file)
 					success_flag = 1
-					break
-
-		# print ("images_length_in_path: %d" %images_length_in_path)
-		# print ("image_index_overall: %d" %image_index_overall)
-		# # print ("Image ")
-	
+					break	
 		if success_flag == 1:
 			if self.debug_verbosity: print ("Successfully processed raw training image. Index: [%d, %d]" %(path_index, image_index_in_path))
 		else:
@@ -111,7 +108,7 @@ class RCNN:
 		return img
 
 	def getTestImage(self, image_pointer):
-		# Load all the test images from all the sequences into one list 
+		'''Return the testing image for the corresponding pointer'''
 		success_flag = 0
 		img = np.zeros((10,10,3), np.uint8)
 		for path_index, paths in enumerate(self.test_paths):
@@ -133,7 +130,7 @@ class RCNN:
 		return img
 
 	def processRawImage(self, image_file):
-		# Process the raw image
+		'''Process the raw image to desired color and resolution status'''
 		img = cv2.imread(image_file)
 		img = img / np.max(img)
 		img = img - np.mean(img)
@@ -142,6 +139,7 @@ class RCNN:
 		return img
 
 	def getBatchImages(self, train=1):
+		'''Return a batch of stacked training OR testing images'''
 		# If the batch is to be extracted from train OR test images list
 		total_images = self.total_train_images if train else self.total_test_images
 		local_pointer = self.last_image_pointer["train"] if train else self.last_image_pointer["test"]
@@ -172,7 +170,7 @@ class RCNN:
 		return stacked_image_batch
 
 	def viewImage(self, image_file):
-		# cv2.imread(image_file)
+		'''View the image depending upon the verbosity'''
 		cv2.imshow("ImageWindow", image_file)
 		cv2.waitKey()
 
