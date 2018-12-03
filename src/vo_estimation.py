@@ -32,15 +32,15 @@ class RCNN:
 										image_sequences = [training sequences list, test sequences list]
 				rnn_model_params	= 	[time_step,	LSTM_nodes, .....]
 				cnn_model_params	= 	[batch_size, ]
-				operation_flags		= 	[debug_verbosity]
+				operation_flags		= 	[debug_verbosity, [train_image_start_pointer, test_image_start_pointer]]
 		'''
 		self.batch_size 		= cnn_model_params[0]
 		self.time_step 			= rnn_model_params[0]
 		self.path_to_dataset 	= data_params[0] 
 		self.image_sequences 	= data_params[1]
-		self.img_ratio 			= data_params[2]
+		self.img_ratio 			= data_params[2] if data_params[2] else 1 
 		self.image_verbosity 	= data_params[-1]
-		self.last_image_pointer = {"train": 0, "test": 0}
+		self.last_image_pointer = {"train": train_image_start_pointer, "test": test_image_start_pointer}
 		self.debug_verbosity 	= operation_flags[0]
 
 	# ------------- Data Processing -------------------- #
@@ -70,6 +70,7 @@ class RCNN:
 		self.train_path_image_lengths = []
 		for paths in self.train_paths:
 			self.train_path_image_lengths.append(len(os.listdir(paths)))
+		self.total_train_images = sum(self.train_path_image_lengths)
 		if self.debug_verbosity:
 			print ("Number of images in the train paths %s" %str(self.train_path_image_lengths)) 
 
@@ -77,33 +78,58 @@ class RCNN:
 		self.test_path_image_lengths = []
 		for paths in self.test_paths:
 			self.test_path_image_lengths.append(len(os.listdir(paths)))
+		self.total_test_images = sum(self.test_path_image_lengths)
 		if self.debug_verbosity:
 			print ("Number of images in the test paths %s" %str(self.test_path_image_lengths)) 
 		
 	def getTrainImage(self, image_pointer):
-		# Load all the train images from all the sequences into one list 
-		for path_index, paths in enumerate(self.train_path_image_lengths):
-			images_length_in_path = sum(self.train_path_image_lengths[0:(path_index+1)])
+		# Load all the train images from all the sequences into one list
+		success_flag = 0
+		img = np.zeros((10,10,3), np.uint8)
+		for path_index, paths in enumerate(self.train_paths):
+			images_length_in_path = sum(self.train_path_image_lengths[0:(path_index)])
+
 			for image_index_in_path, image_file in enumerate(os.listdir(paths)):
 				image_index_overall = images_length_in_path + image_index_in_path
 				if (image_pointer == image_index_overall):
 					img = self.processRawImage(paths + "/" + image_file)
-		if self.image_verbosity:
-			print ("Successfully extracted training images")
-			viewImage(img)
+					success_flag = 1
+					break
+
+		# print ("images_length_in_path: %d" %images_length_in_path)
+		# print ("image_index_overall: %d" %image_index_overall)
+		# # print ("Image ")
+	
+		if success_flag == 1:
+			if self.debug_verbosity: print ("Successfully processed raw training image. Index: [%d, %d]" %(path_index, image_index_in_path))
+		else:
+			if self.debug_verbosity: print ("Could not process training image")
+			sys.exit()
+
+		if self.image_verbosity and self.debug_verbosity:
+			self.viewImage(img)
 		return img
 
 	def getTestImage(self, image_pointer):
 		# Load all the test images from all the sequences into one list 
-		for path_index, paths in enumerate(self.test_path_image_lengths):
-			images_length_in_path = sum(self.test_path_image_lengths[0:(path_index+1)])
+		success_flag = 0
+		img = np.zeros((10,10,3), np.uint8)
+		for path_index, paths in enumerate(self.test_paths):
+			images_length_in_path = sum(self.test_path_image_lengths[0:(path_index)])
 			for image_index_in_path, image_file in enumerate(os.listdir(paths)):
 				image_index_overall = images_length_in_path + image_index_in_path
 				if (image_pointer == image_index_overall):
 					img = self.processRawImage(paths + "/" + image_file)
-		if self.image_verbosity:
-			print ("Successfully extracted testing images")
-			viewImage(img)
+					success_flag = 1
+					break
+
+		if success_flag==1:
+			if self.debug_verbosity: print ("Successfully processed raw testing image. Index: [%d, %d]" %(path_index, image_index_in_path))
+		else:
+			if self.debug_verbosity: print ("Could not process testing image")
+			sys.exit()
+		if self.image_verbosity and self.debug_verbosity:
+			self.viewImage(img)
 		return img
 
 	def processRawImage(self, image_file):
@@ -117,14 +143,23 @@ class RCNN:
 
 	def getBatchImages(self, train=1):
 		# If the batch is to be extracted from train OR test images list
-		image_list = self.train_images_list if train else self.test_images_list
+		total_images = self.total_train_images if train else self.total_test_images
+		local_pointer = self.last_image_pointer["train"] if train else self.last_image_pointer["test"]
 		stacked_image_batch = []
 
 		# Extracting images of batch_size length using the last pointer in the list
-		for index in range(self.last_image_pointer, self.batch_size + self.last_image_pointer, self.time_step):
-			if ((index+1) < len(image_list)):
-				stacked_image = np.concatenate([getTrainImage(index), getTrainImage(index+1)], -1)
+		img_lower_index = local_pointer
+		img_higher_index = local_pointer + self.batch_size*self.time_step
+		for index in range(img_lower_index, img_higher_index, self.time_step):
+			# print (img_lower_index, img_higher_index, self.time_step, index)
+			if ((index+1) < total_images):
+				if train:
+					stacked_image = np.concatenate([self.getTrainImage(index), self.getTrainImage(index+1)], -1)
+				else:
+					stacked_image = np.concatenate([self.getTestImage(index), self.getTestImage(index+1)], -1)					
 				stacked_image_batch.append(stacked_image)
+			else:
+				print("Reached the end of the dataset")
 
 		# Store the last batch pointer
 		if train:
@@ -132,12 +167,14 @@ class RCNN:
 		else:
 			self.last_image_pointer["test"] = self.last_image_pointer["test"] + self.batch_size
 
+		if self.debug_verbosity:
+			print ("Stacked Image Batch Size: [%d]" %len(stacked_image_batch))
 		return stacked_image_batch
 
 	def viewImage(self, image_file):
-		cv2.imread(image_file)
-		cv2.imshow()
-		cv2.waitkey()
+		# cv2.imread(image_file)
+		cv2.imshow("ImageWindow", image_file)
+		cv2.waitKey()
 
 	# ------------- Deep Learning Model -------------------- #
 
@@ -153,7 +190,7 @@ class RCNN:
 
 		return designed_optimizer
 
-	def defineCnnModel(self):
+	def defineCNNModel(self):
 		'''Basic Convolutional Neural Network for processing stacked images'''
 		# CNN Model 
 		cnn_model = Sequential()
@@ -205,15 +242,17 @@ class RCNN:
 	def execute(self):
 		self.initImagePaths()
 		self.initDataset()
+		self.getBatchImages()
 
 
 if __name__ == '__main__':
-	cnn_model_params = [5]
-	rnn_model_params = [3]
+	cnn_model_params = [3]
+	rnn_model_params = [10]
 	path_to_poses = "../dataset_images"	
 	image_sequences = [["00"], ["11"]]
-	img_ratio, image_verbosity, debug_verbosity = 1, 1, 1
-	operation_flags = [debug_verbosity]
+	img_ratio, image_verbosity, debug_verbosity = 0, 1, 1
+	train_image_start_pointer, test_image_start_pointer = 500, 21
+	operation_flags = [debug_verbosity, [train_image_start_pointer, test_image_start_pointer]]
 	data_params = [path_to_poses, image_sequences, img_ratio, image_verbosity]
 	rcnn_object = RCNN(cnn_model_params, rnn_model_params, data_params, operation_flags)
 	rcnn_object.execute()
