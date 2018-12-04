@@ -9,6 +9,7 @@ class Odometry:
 		Input: 	data_params 		= 	[path_to_poses, image_sequences, pose_verbosity]
 										image_sequences = [training sequences list]
 				cnn_model_params	= 	[batch_size]
+				rnn_model_params 	= 	[time_steps]
 		'''
 		self.batch_size = cnn_model_params[0]
 		self.path_to_poses = data_params[0]
